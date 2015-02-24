@@ -1,0 +1,24 @@
+Normal Ho Data, simulation of n =  20
+----------------------------------------------------------------
+Bias under : -0.9993 for OLS and -1.0019 for IRLS
+SE under : 0.2426 for OLS and 0.2561 for IRLS: 94.73% improvement in beta stability for IRLS
+Mean t-score under : 0.0079 for OLS and -0.0055 for IRLS: -144.25% improvement for IRLS
+SE of t-scores under : 1.0606 for OLS and 1.1071 for IRLS: 95.80% improvement for IRLS
+Normal Ho Data with Outlier at 5.21 st. deviations, simulation of n =  20
+----------------------------------------------------------------
+Bias under : -0.9990 for OLS and -1.0030 for IRLS
+SE under : 0.5898 for OLS and 0.2645 for IRLS: 222.97% improvement in beta stability for IRLS
+Mean t-score under : -0.0058 for OLS and -0.0125 for IRLS: 46.66% improvement for IRLS
+SE of t-scores under : 1.0642 for OLS and 0.9063 for IRLS: 117.43% improvement for IRLS
+Normal Ha Data, SNR = 1, simulation of n =  20
+----------------------------------------------------------------
+Bias under Ha: -0.0003 for OLS and 0.0002 for IRLS
+SE under Ha: 0.2437 for OLS and 0.2565 for IRLS: 95.03% improvement in beta stability for IRLS
+Mean t-score under Ha: 4.4914 for OLS and 4.3738 for IRLS: 102.69% improvement for IRLS
+SE of t-scores under Ha: 1.5366 for OLS and 1.5924 for IRLS: 96.50% improvement for IRLS
+Normal Ha Data (SNR = 1) with Outlier at 4.04 st. deviations, simulation of n =  20
+----------------------------------------------------------------
+Bias under Ha: 0.0033 for OLS and -0.0026 for IRLS
+SE under Ha: 0.6054 for OLS and 0.2695 for IRLS: 224.61% improvement in beta stability for IRLS
+Mean t-score under Ha: 2.5403 for OLS and 3.3882 for IRLS: 74.97% improvement for IRLS
+SE of t-scores under Ha: 1.6865 for OLS and 1.4077 for IRLS: 119.80% improvement for IRLS

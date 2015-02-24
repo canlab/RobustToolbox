@@ -1,0 +1,113 @@
+{\rtf1\mac\ansicpg10000\cocoartf102
+{\fonttbl\f0\fswiss\fcharset77 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+\margl1440\margr1440\vieww16580\viewh20940\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\ql\qnatural
+
+\f0\fs28 \cf0 Readme help for Robust_v1.0\
+by Tor Wager, April 2004\
+\
+This set of functions is intended to run 'random effects' analyses using iteratively reweighted least squares (IRLS), a model fitting technique that is less sensitive to outliers than ordinary least squares (OLS).  \
+\
+See also Running Robust Regression.doc in this folder for a step-by-step example of setup.\
+\
+REQUIREMENTS:\
+1) The Matlab statistics toolbox (sorry!)\
+2) SPM99 or SPM2 functions in the matlab path (spm_vol, spm_read_vols)\
+3) I think that's it...\
+\
+Run the analysis by running the function robfit.m\
+\
+Its inputs are 1) Sets of mage file names, 2) A list of which sets to run, 3) contrast names for each set, 4) contrast numbers for each set (e.g., corresponding to SPM), 5) behavioral or other covariates, if any.\
+\
+To run the program, you need to create a structure in the workspace with the following fields, corresponding to the inputs:\
+\
+1) A list of image file names (Analyze format, SPM compatible) that you want to analyze over.  Most commonly, this is a set of contrast images, one per subject.  For example, one can store the following list of files in this way:\
+\
+>> EXPT.SNPM.P\{1\}\
+\
+ans =\
+\
+030905at/con_0002.img\
+030905dd/con_0002.img\
+030909jh/con_0002.img\
+030911jd/con_0002.img\
+030911mb/con_0002.img\
+030916jk/con_0002.img\
+030918ql/con_0002.img\
+030919sj/con_0002.img\
+030923vb/con_0002.img\
+031001kp/con_0002.img\
+031002lr/con_0002.img\
+031008jr/con_0002.img\
+031009jh/con_0002.img\
+031010sh/con_0002.img\
+031021so/con_0002.img\
+031023pp/con_0002.img\
+\
+>> EXPT.SNPM.P\{2\} may contain another list of filenames,  EXPT.SNPM.P\{3\} a third, and so on.  These filenames are padded string matrices, as used in SPM.  See spm_get for a graphical way to get these filenames.\
+\
+2) These next parts store the names and numbers assigned to these contrasts.  The program will create a directory called robust???? (? is your number) for the results.  \
+\
+>> EXPT.SNPM.connames = ['My_task_vs_control'];\
+>> EXPT.SNPM.connums = 888;\
+\
+The 2nd - Nth contrasts will be in the 2nd-Nth rows of connames (e.g., it's a padded string matrix), and the connums is a row vector.\
+\
+3)  If there is no field called EXPT.cov, or it's empty, then the program will fit only an intercept term.  That is, it performs a robust one-sample t-test with 0 as the null effect. If you enter one covariate as an n x 1 COLUMN vector, it performs simple regression, saving results for the intercept (activation magnitude) and slope (correlation between activation and behavior/covariate scores).  If you add columns to EXPT.cov, the program performs multiple regression.  The intercept term is always the first output image (0001) in the results directory!\
+\
+Also, the covariates are always transformed to z-scores (standardized) before fitting.  It is at least essential to center them, or the intercept term will no longer be interpretable.  (It won't reflect activation).\
+\
+ >> EXPT.cov = randn(16,1)	% here i've just set the covariate to random 						values.\
+\
+4) Now you're ready to run.  The program will run robust IRLS on the images you've entered.  If you have only one set of images, as in this example, you can run them using this command:\
+\
+EXPT = robfit(EXPT,1);\
+\
+This tells it that you want to run the first set of images.  If you have multiple sets, you can enter a range of them to run:\
+\
+EXPT = robfit(EXPT,2:5);  \
+\
+runs the 2nd through 5th sets of images.\
+\
+The robfit program does the analysis on every voxel in the brain, excluding voxels that are NaNs or whose sum is exactly zero across all images.  \
+\
+* Note: the program SAYS it's "working on" the first image.  This is a shorthand - it's working on the whole set.\
+\
+It will speed things up a great deal, particularly if you have small voxels, to mask out CSF/ white matter before running.\
+\
+OUTPUT\
+\
+For each of the intercept + covariates, the program will write several images.  These images are stored in the robust???? directory.  They are:\
+\
+rob_beta_0001.img	\
+	% robust beta (magnitude/slope) values for the intercept	\
+	% other covariates will be called 0002, etc.\
+rob_tmap_0001.img\
+	% robust t-values at each voxel\
+rob_p_0001.img\
+	% p-values at each voxel\
+ols_* images\
+	% the same images, fit with ordinary least squares\
+irls-ols * images\
+	% z and p values (from a z-test) at each voxel, comparing the reliability 		scores for IRLS - OLS\
+\
+TO COMPARE the OLS and IRLS output, try running the following script\
+(included in the distribution folder):\
+\
+* first go to the robust000? results directory\
+then:\
+>> rob_vs_ols_imaging_compare_script\
+\
+This script will write filtered results images at a p-value hard-coded in the script (.001 by default) and run compare_filtered_t.m, a function that displays slices of filtered ordinary (left) and robust (right) and Z-difference (bottom) images.\
+\
+\
+
+\fs30 \
+\
+\
+\
+\
+\
+\
+}
