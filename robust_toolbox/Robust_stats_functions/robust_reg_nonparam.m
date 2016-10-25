@@ -1,3 +1,4 @@
+
 function R = robust_reg_nonparam(X,niter,varargin)
 %
 % Robust regression with nonparametric correction for multiple comparisons
@@ -214,6 +215,52 @@ print_maxt(R.correct.t,R.names,wh_intercept)
 % -------------------------------------------------------------------
 disp('Permuting data to test image-wise and cluster-wise maxima');
 fprintf(1,'\n-------------------------------------------------------------------\n');
+
+if sum(sum(isnan(R.Y),2)>0) % if there is any missing data from any voxel from any subject, then either remove subjects or voxels
+    totvox = size(R.Y,2);
+    goodvox = sum(sum(isnan(R.Y))==0);
+    badvox = totvox-goodvox;
+    nsubj = size(R.Y,1);
+    goodsubj = sum(sum(isnan(R.Y),2)==0);
+    badsubj = nsubj-goodsubj;
+    fprintf('=== WARNING: Missing data within ROI for %3.0f/%3.0f subjects ===\n\n',badsubj,nsubj);
+    fprintf('\nWould you like to \n1) Remove %4.0f/%4.0f voxels and keep all subjects?\n2) Remove %3.0f/%3.0f subjects and keep all voxels?\n3) Enter debug mode\n',badvox,totvox,badsubj,nsubj);
+    response = input('Enter your response (1,2 or 3): ');
+    switch response
+        case 1
+            fprintf('\nParing down to %4.0f/%4.0f voxels\n',goodvox,totvox)
+            wh_keep = find(sum(isnan(Y))==0);
+            Y_full = Y;
+            Y = Y(:,wh_keep);
+            [R.correct.b,R.correct.t,R.correct.p, ...
+                R.correct.sig,R.correct.f,R.correct.fp,R.correct.fsig,stat] = robust_reg_matrix(X,Y);
+            R.correct.resid = stat.resid;
+            R.correct.wts = stat.wts;
+            R.Y = R.Y(:,wh_keep);
+            R.volInfo.wh_inmask = R.volInfo.wh_inmask(wh_keep);
+            R.volInfo.n_inmask = goodvox;
+            R.volInfo.xyzlist = R.volInfo.xyzlist(wh_keep,:);
+            R.volInfo.clindx = R.volInfo.clindx(wh_keep);
+        case 2
+            fprintf('\nParing down to %4.0f/%4.0f subjects\n',goodsubj,nsubj)
+            wh_keep = find(sum(isnan(Y),2)==0);
+            Y_full = Y;
+            X_full = X;
+            Y = Y(wh_keep,:);
+            X = X(wh_keep,:);
+            [R.correct.b,R.correct.t,R.correct.p, ...
+                R.correct.sig,R.correct.f,R.correct.fp,R.correct.fsig,stat] = robust_reg_matrix(X,Y);
+            R.correct.resid = stat.resid;
+            R.correct.wts = stat.wts;
+            R.image_names = R.image_names(wh_keep,:);
+            R.Y = R.Y(wh_keep,:);
+            R.X = R.X(wh_keep,:);
+        case 3
+            keyboard
+        otherwise
+            error('Unknown input')
+    end
+end
 
 [R.correct.t,R.correct.p,R.maxt,R.maxt_by_cl, R.primary_uncor] = ...
     robust_pooled_weight_core(X,Y,R.correct.b,R.correct.resid, ...
