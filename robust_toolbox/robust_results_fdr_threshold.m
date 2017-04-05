@@ -101,9 +101,17 @@ end
         disp(imgs)
 
         if ~exist(mask, 'file'), error('Cannot find mask image file.'); end
-        maskInfo = iimg_read_img(mask, 2);
-
-        pvals = iimg_get_data(maskInfo, imgs);
+        
+        % tor added 2017 to auto reslice
+        maskobj = fmri_data(mask);
+        pobj = fmri_data(imgs);
+        pobj = apply_mask(pobj, maskobj);
+        
+        % old
+        %maskInfo = iimg_read_img(mask, 2);
+        %pvals = iimg_get_data(maskInfo, imgs);
+        
+        pvals = pobj.dat;
         fdr_p_thresh = FDR(pvals(:), .05);
         
         if isempty(fdr_p_thresh), fdr_p_thresh = -Inf; end

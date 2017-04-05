@@ -22,6 +22,7 @@
 % EXPT.SNPM.connames    str mtx of contrast names for each P string matrix
 % EXPT.SNPM.connums     contrast numbers for each P
 % EXPT.cov              empty for 1-sample ttest, or containing covariates
+% EXPT.mask             optional mask file for voxels to run
 % [mask] is the name of the mask file to use
 % [nocenter] is a flag to be used if you don't want to center some
 % variables (e.g., you have three different groups, two sets of contrasts)
@@ -109,11 +110,11 @@ fprintf(1,'%s\n',linestr);
 % covt = [ones(1,size(covt,1)) covt];
 %covt(:,end+1) = 1;
 
-
+if isfield(EXPT, 'mask') && exist(EXPT.mask, 'file'), domask = EXPT.mask; end
 
 if ~isempty(varargin), wh=varargin{1}; else wh=1:length(EXPT.SNPM.P); end
-if length(varargin)>1, dools = varargin{2}; else dools = 1; end
-if length(varargin)>2, domask = varargin{3}; else domask = 0; end
+if length(varargin)>1, dools = varargin{2}; else dools = true; end
+if length(varargin)>2, domask = varargin{3}; end
 
 % ----------------------------------------------------
 % check some things
@@ -445,9 +446,7 @@ V = V(1); [d,f,e] = fileparts(V.fname);
 switch(spm('Ver'))
     case 'SPM2'
         V.dim(4) = spm_type('float');
-    case 'SPM5'
-        V.dt(1) = spm_type('float32');
-    case 'SPM8'
+    case {'SPM5' 'SPM8' 'SPM12'}
         V.dt(1) = spm_type('float32');
     otherwise
         error('Unknown SPM version "%s": neuroscientists of the future, fix me!', spm('Ver'));
