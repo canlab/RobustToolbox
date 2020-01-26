@@ -1,229 +1,185 @@
-function robust_results_batch(varargin)
-%robust_results_batch(varargin)
+%% Robust regression report
+
+%% About this report
 %
-% This function runs and saves tables, images, and clusters
-% for all effects of a robust regression model
+% This script displays a summary of robust regression results
+% Stored in a CANLab robust regression folder
+% 
+% It can be used with the publish() command to generate a published html
+% report.  e.g.,
 %
-% You need Tor's mediation toolbox on your path.
+%%
+%  cd(my robust results directory)
+%  publish('robust_results_batch')
+% 
+
+%%
+% publish.m is a Matlab report-generating function that can print to PDF,
+% HTML, Powerpoint, and other formats. See |help publish| for more.
 %
-% You also need to enter optional inputs as you would to
-% mediation_brain_results.
-% Enter any arguments to mediation_brain_results:
-% e.g., ... 'thresh', [.005 .01 .05], 'size', [3 1 1], 'prune', 'overlay',
-% EXPT.overlay, 'mask', EXPT.mask);
+% To create reports and save them in the current robust results dir, try:
 %
-% You MUST enter a mask image name. robfit does not currently save a
-% default one, and mediation_brain_results requires one.
+%  publish_robust_regression_report
 %
-% Tor Wager, March 2010
-% Updated: Aug 2012
-%       - compatibility with publish
-%       - new default slice views, compatible with canlab_results_fmridisplay slice format
-%       - added some diagnostic plots (qchist) as standard output
+% This script can also be customized to create different types of reports
+
+% Load files from current directory
+% -----------------------------------------------------------------------
+
+[trob, names, mask_obj, nsubjects, weights, SETUP] = robust_reg_load_files_to_objects(pwd);
+
+% Load files from a CANLab robust regression directory into objects
+% Objects contain information needed for results display and tables.
 %
-% Optional inputs:
-% -------------------------------------------------------------------------
-%             case 'mask', mask = varargin{i+1}; varargin{i} = []; varargin{i+1} = [];
-%             case 'overlay', overlay = varargin{i+1}; varargin{i} = []; varargin{i+1} = [];
-%                 
-%             case 'thresh', pthresh = varargin{i+1}; varargin{i} = []; varargin{i+1} = [];
-%             case 'size', kthresh = varargin{i+1}; varargin{i} = []; varargin{i+1} = [];
-%                 
-%             case 'reversecolors', reversecolors = 1;
-%                 
-%             case 'skipmask', skipmask = 1;
-%                 
-%             case {'rob', 'rob0', 'rob1', 'rob2', 'rob3', 'rob4'}
-%                 
-% Examples:
-% -------------------------------------------------------------------------
-% robust_results_batch('overlay', EXPT.overlay, 'mask', EXPT.mask, 'thresh', [.001 .005 .05], 'size', [5 1 1], 'prune');
-% follow up with surface plots and a surface movie:
-% load cl_rob_p_0002_001_005_05_k5_1_1_prune.mat  % this is for the covariate effect
-% mediation_brain_surface_figs(clpos, clneg);
+% trob      statistic_image object with one image per contrast (the model intercept is the first image)
+% names     cell array of names of each image (intercept, regressor 1, etc.)
+% mask_obj  image defining the set of voxels analyzed
+% nsubjects image summarizing number of subjects with valid data in each voxel
+% weights   fmri_data object with weight maps for each subject (i.e., input image)
+% SETUP     struct saved in directory, including design matrix SETUP.X
 
-mask = 'rob_beta_0001.img';
-overlay = [];
-pthresh = [.001 .01 .05];  %[.005 .01 .05]; %[.001 .005 .01]; %'fdr';            % specify 'fdr' or a series of p thresholds
-kthresh = [3 1 1];          % specify a series of extent thresholds
-reversecolors = 0;
-orig_varargin = varargin;
-overlay = which('SPM8_colin27T1_seg.img');
-skipmask = 0;
+% Preliminaries
+% -----------------------------------------------------------------------
 
-% special inputs that we do extra things with;
-% all optional inputs are passed to mediation_brain_results
-for i = 1:length(varargin)
-    if ischar(varargin{i})
-        switch varargin{i}
-            % functional commands
-            case 'mask', mask = varargin{i+1}; varargin{i} = []; varargin{i+1} = [];
-            case 'overlay', overlay = varargin{i+1}; varargin{i} = []; varargin{i+1} = [];
-                
-            case 'thresh', pthresh = varargin{i+1}; varargin{i} = []; varargin{i+1} = [];
-            case 'size', kthresh = varargin{i+1}; varargin{i} = []; varargin{i+1} = [];
-                
-            case 'reversecolors', reversecolors = 1;
-                
-            case 'skipmask', skipmask = 1;
-                
-            case {'rob', 'rob0', 'rob1', 'rob2', 'rob3', 'rob4'}
-                warning('Do not enter rob* inputs to robust_results_batch');
-                varargin{i} = []; orig_varargin{i} = [];
-                
-                % omit warning because we may have other valid inputs to pass forward
-                %otherwise, warning(['Unknown input string option:' varargin{i}]);
-        end
-    end
+% Number of images, including intercept
+k = size(trob.dat, 2);      
+
+% Display helpers
+dashes = '----------------------------------------------';
+printstr = @(dashes) disp(dashes);
+printhdr = @(str) fprintf('%s\n%s\n%s\n', dashes, str, dashes);
+
+% Set up figure
+
+create_figure('slices'); axis off
+o2 = canlab_results_fmridisplay;
+
+%% Mask of in-analysis voxels and number of participants
+% This montage shows the voxels analyzed in green
+
+o2 = addblobs(o2, region(mask_obj), 'color', [0 .7 0], 'trans');
+o2 = o2.title_montage(5, 'Analysis mask');
+drawnow, snapnow
+
+o2 = removeblobs(o2);
+o2 = addblobs(o2, region(nsubjects), 'mincolor', [1 1 1], 'maxcolor', [0 0 1], 'trans');
+o2 = o2.title_montage(5, 'Coverage (number of participants)');
+o2 = legend(o2);
+
+drawnow, snapnow
+
+fprintf('Modal value for number of participants: %d\n', mode(nsubjects.dat));
+
+%% Plot of subject weights 
+% This plot shows a summary of the weight maps for each subject
+% Weights of less than one indicate that a subject is down-weighted for
+% the low-weight voxel. Weights of zero indcate the subject was dropped entirely for
+% that voxel.
+%
+% A subject with low weights across large areas of the brain is an outlier
+% across many brain areas.
+% 
+% See |help fmri_data.plot| and the basic plot walkthrough on canlab.github,io 
+% for more information about this plot
+%
+% In this plot, the 'carpet plot' of weights across all subjects is
+% currently mean-zeroed across the whole dataset. The relative weights 
+% provide the key information.
+
+plot(weights);
+drawnow, snapnow
+
+% slices(weights, 'orientation', 'axial');
+
+
+%% Unthresholded results maps
+% This plot shows the unthresholded t-maps
+%
+% The first image is the intercept in a standard CANlab robust regression analysis
+% If regressors are mean-centered, the intercept can be interpreted as the
+% activity for the average subject (when regressor values are all 0)
+%
+% Controlling for regressors (of interest or nuisance covariates) can be
+% very helpful in reducing known sources of error when assessing group-mean
+% activation.
+
+create_figure('robust t maps'); axis off
+o2 = canlab_results_fmridisplay([], 'multirow', k);
+
+for i = 1:k
+    
+    t = get_wh_image(trob, i);
+    
+    o2 = addblobs(o2, region(t), 'trans', 'wh_montages', 2*i - 1: 2*i);  % 2 montages in registry per slice display
+    o2 = title_montage(o2, 2*i, names{i});
 end
 
-if isempty(mask), error('You must enter a mask image or omit mask for the default: rob_beta_0001.img.'); end
-if isempty(overlay), error('You must enter an overlay (anatomical) image, or omit overlay for the default: SPM8_colin27T1_seg.img.'); end
+drawnow, snapnow
 
-currdir = pwd;
-setupfile = fullfile(currdir, 'SETUP.mat');
-if ~exist(setupfile, 'file'); error('SETUP.mat does not exist in current dir; go to valid robust results directory.'); end
+%% FDR-corrected results maps and tables for each regressor
+%
+% This plot shows False Discovery Rate corrected t-maps for each regressor
+% Apply gray matter mask before FDR correction
 
+trob = apply_mask(trob, which('gray_matter_mask.img'));
 
-% ---------------------------------------------------------
-% Report header
-% ---------------------------------------------------------
+o2 = removeblobs(o2);
 
-load(setupfile)
-ncols = size(SETUP.X, 2);
-
-reportfile = fullfile(pwd, 'robust_results_batch_report.txt');
-diary(reportfile)
-
-hdrline = '==========================';
-sepline = '________________________________';
-
-fprintf('%s\n=\n= robust_results_batch.m\n=\n%s\n', hdrline, hdrline)
-fprintf('Directory: %s\nDate report generated: %s\n%s\n', currdir, date, sepline);
-
-%pause(1)
-fprintf('\n\nModel info:\n%s\nImages and regressors (intercept + %3.0f covs)\n', sepline, ncols - 1);
-imgs = mat2cell(SETUP.files, ones(size(SETUP.files, 1), 1), size(SETUP.files, 2));
-print_matrix(SETUP.X, [], imgs);
-
-fprintf('\n%s\n', hdrline)
-
-fprintf('\n\nResults info:%s\nInput options:\n', sepline);
-for i = 1:length(orig_varargin)
-    if ischar(orig_varargin{i})
-        fprintf('%s\t', orig_varargin{i});
-    elseif ishandle(orig_varargin{i})
-    else
-        print_matrix(orig_varargin{i})
-    end
+for i = 1:k
+    
+%     disp(' ')
+%     printhdr(sprintf('FDR-corrected: %s', names{i}))
+%     disp(' ')
+%     
+    t = get_wh_image(trob, i);
+    
+    t = threshold(t, .05, 'fdr');
+    o2 = addblobs(o2, region(t), 'trans', 'wh_montages', 2*i - 1: 2*i);
+    o2 = title_montage(o2, 2*i, names{i});
+    
 end
 
-fprintf('\nResults inputs\n%s\n', sepline);
-fprintf('\nMask: %s\nOverlay: %s\n', mask, overlay);
-fprintf('\nP-value thresholds: ');  print_matrix(pthresh);
-fprintf('\nExtent thresholds: ');  print_matrix(kthresh);
+drawnow, snapnow
 
-% ---------------------------------------------------------
-% Mask figure
-% ---------------------------------------------------------
+%% FDR-corrected results surfaces and tables for each regressor
+%
+% We apply a gray matter mask before FDR correction and correct within
+% gray-matter voxels. The mask is fairly liberal to avoid excluding brain
+% tissue of interest. (It assumes data are in MNI space).
+%
+% Correcting within gray matter applies the multiple comparisons correction
+% only within areas where we would plausibly expect signai. i.e., we are
+% not penalized for searching for activity in the ventricles.
+%
+% The table() function generates a table with region and network names
+% labeled using a standard CANlab atlas object. See the walkthrough on
+% atlas objects in canlab.github.io for more information. 
+% The default atlas at time of writing this is the canlab2018_2mm atlas.
 
-% clear existing windows. No longer necessary, but good anyway.
-figh = findobj('Tag', 'montage_axial');
-if ishandle(figh), clf(figh); end
-
-figh = findobj('Tag', 'montage_coronal');
-if ishandle(figh), clf(figh); end
-
-figh = findobj('Tag', 'montage_sagittal');
-if ishandle(figh), clf(figh); end
-
-if ~skipmask
+for i = 1:k
     
-    cltmp = mask2clusters(mask);
-    cluster_orthviews(cltmp, {[0 1 0]}, 'trans');
-    cluster_orthviews_montage(6, 'axial', overlay, 'onerow');
-    %snapnow
-    %mask_fig_handle = montage_clusters(mask);
-    mask_fig_handle = findobj('Tag', 'montage_axial');
-    set(mask_fig_handle, 'Name', 'Mask image');
-    scn_export_papersetup(500); saveas(mask_fig_handle, fullfile(currdir, 'Results_Mask.png'));
+    disp(' ')
+    printhdr(sprintf('FDR-corrected: %s', names{i}))
+    disp(' ')
     
-    cluster_orthviews_montage(10, 'sagittal', overlay, 'onerow');
+    t = get_wh_image(trob, i);
     
-    f = findobj('Tag', 'Graphics');
-    set(f, 'Visible', 'off');
+    t = threshold(t, .05, 'fdr');
     
-    snapnow
+    % Table
+    r = region(t);
+    r = table(r, 'nolegend');
+    
+    % Surfaces and slices
+    
+    figure; 
+    surface_handles = surface(t);
+    
+    o2_surf = canlab_results_fmridisplay(r, 'montagetype', 'full', 'nooutline');
+    
+    drawnow, snapnow
+    
 end
 
-% ---------------------------------------------------------
-% Histogram+ on input data
-% ---------------------------------------------------------
-if ~isempty(check_valid_imagename(SETUP.files, 0))
-    
-    fprintf('%s\nImage dataset visualization and diagnostics\n%s\n', sepline, sepline);
-    qchist(SETUP.files);
-    sfig = findobj('Tag', 'Graphics');
-    set(sfig, 'Visible', 'off');
-    snapnow
-else
-    disp('Cannot find images in SETUP.files. Skipping QC histograms.')
-end
-
-% ---------------------------------------------------------
-% Case (subject) weights
-% ---------------------------------------------------------
-
-fprintf('%s\nCase (subjects) weights: Low indicates likely outliers\n%s\n', sepline, sepline);
-dat = fmri_data('weights.img');
-plot(dat)
-sfig = findobj('Tag', 'Graphics');
-set(sfig, 'Visible', 'off');
-snapnow
-
-
-% ---------------------------------------------------------
-% Report results info, including FDR correction
-% ---------------------------------------------------------
-
-fprintf('\nFDR correction info (FDR not necessarily used here; just for info):%s\n', sepline);
-SETUP = robust_results_fdr_threshold('fdr', 'mask', mask);
-
-fprintf('\n%s\nColors: ', sepline);
-if reversecolors, fprintf('Reversed\n%s\n', hdrline);
-else fprintf('Normal\n%s\n', hdrline);
-end
-
-if reversecolors
-    negcolors = { [1 1 0] [1 .5 0] [1 .3 .3] };
-    poscolors = { [0 0 1] [0 .5 1] [.3 .3 1] };
-else
-    poscolors = { [1 1 0] [1 .5 0] [1 .3 .3] };
-    negcolors = { [0 0 1] [0 .5 1] [.3 .3 1] };
-end
-
-% ---------------------------------------------------------
-% Run for each effect
-% ---------------------------------------------------------
-
-for i = 1:ncols
-    
-    robstring = ['rob' num2str(i - 1)];
-    
-    fprintf('%s\n=\n= Results for %s\n=\n%s\n', hdrline, robstring, hdrline)
-    
-    [clpos, clneg, clpos_data, clneg_data, clpp2, clnn2] = mediation_brain_results ...
-        (robstring, 'thresh', pthresh, 'size', kthresh,  ...
-        'tables', 'slices', 'save', 'overlay', overlay, 'mask', mask, 'poscolors', poscolors, 'negcolors', negcolors, varargin{:});
-    
-    f = findobj('Tag', 'Graphics');
-    set(f, 'Visible', 'off');
-    
-    snapnow
-end
-
-diary off
-
-end % function
 
 

@@ -89,12 +89,19 @@ end
         % (Ignore images that do not vary across mediation tests.)
 
         load(fullfile(pwd, 'SETUP.mat'),  'SETUP');
-
+        
         if isempty(imgs)
-
-           imgs = dir('rob_p_*.img'); 
-           imgs = char(imgs.name);
-
+            
+            imgs = dir('rob_p_*.nii');
+            imgs = char(imgs.name);
+            
+        end
+        
+        if isempty(imgs) % legacy
+            
+            imgs = dir('rob_p_*.img');
+            imgs = char(imgs.name);
+            
         end
 
         disp('Calculating FDR threshold across family of tests in these images:')

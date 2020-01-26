@@ -62,6 +62,8 @@
 % of 0s, 1s, and -1s.  Previously, if ANY covariate was not composed soley
 % of 0s, 1s, and -1s, then NO covariate was centered.  Now, this decision
 % is made for each covariate separately.
+%
+% 1/22/2020 changed N to handle 4-D image entry.
 
 function EXPT = robfit(EXPT,varargin)
 
@@ -243,7 +245,8 @@ if domask
     
 end
 
-N = size(P, 1);
+%N = size(P, 1);  % This will not work for a 4-D image.
+N = nvols;
 
 % minimum allowed observations.  robust requires 3 df
 if isempty(covt), k = 1;  %only estimate intercept
