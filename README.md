@@ -67,11 +67,13 @@ After installation, there are two ways to use CANlab robust regression within Ma
 | weights.nii           | 4-D image of regression weights for each input image                        |
 
 - **robust_results_batch** is a script that loads the files from disk into CANlab objects and generates a series of visualizations and tables.
-- |publish_robust_regression_report** is a script that publishes an HTML report with the results of the analysis.
-- **robust_regression_walkthrough_toolbox.mlx** is a
+- **publish_robust_regression_report** is a script that publishes an HTML report with the results of the analysis.
+- **robust_regression_walkthrough_toolbox.mlx** is a Matlab live script that walks you through a sample analysis.
 
 Both of these can be customized for your application, and the code contains more information about how to use CANlab tools and generate other kinds of output.
 
 ### Object-oriented tools
 
 - The second way uses the regress() method for fmri_data in CANlab object-oriented toolbox. It does not use this toolbox, but uses the same robust regression algorithm. It returns statistic_image class objects, which can be visualized and written to disk (e.g., as Nifti files), but it does not write files to disk by default.
+
+- **robust_regression_walkthrough_objectoriented.mlx** is a Matlab live script that walks you through a sample analysis.
