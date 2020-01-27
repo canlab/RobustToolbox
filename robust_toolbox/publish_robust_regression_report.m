@@ -4,7 +4,6 @@
 % Run this from the main CANLab robust regression results directory (basedir)
 
 close all
-warning off, clear all, warning on 
 
 resultsdir = pwd;
 

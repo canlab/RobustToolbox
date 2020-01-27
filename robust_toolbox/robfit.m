@@ -17,12 +17,14 @@
 %
 % Intercept is added as 1st predictor
 %
-% fields should be:
-% EXPT.SNPM.P           containing image names of individual subjects
-% EXPT.SNPM.connames    str mtx of contrast names for each P string matrix
-% EXPT.SNPM.connums     contrast numbers for each P
-% EXPT.cov              empty for 1-sample ttest, or containing covariates
-% EXPT.mask             optional mask file for voxels to run
+% The fields of EXPT should be:
+%
+% EXPT.SNPM.P           Cell vector. Each cell specifies images for one analysis. Each cell contains a string matrix with image names for the analysis. Image files can be 3-D or 4-D images.
+% EXPT.SNPM.connames    Cell vector. Each cell contains a string with the analysis name (e.g., contrast name) for this contrast
+% EXPT.SNPM.connums     Vector of contrast numbers. Determines folder names (e.g., 1 = robust0001 
+% EXPT.cov              [n x k] matrix of n observations (must match number of images) empty for 1-sample ttest, or containing covariates
+% EXPT.mask             Optional mask file image name, for voxels to include
+%     
 % [mask] is the name of the mask file to use
 % [nocenter] is a flag to be used if you don't want to center some
 % variables (e.g., you have three different groups, two sets of contrasts)
@@ -224,6 +226,10 @@ SETUP = struct('dir', mydir, 'name', analysisname, 'files', P, 'covariates', cov
 V = spm_vol(P);
 v = spm_read_vols(V);
 nvols = size(v, 4);
+
+if nvols ~= size(covt, 1)
+    error('robfit: %d obs in design matrix X, but %d image volumes. These must match.', size(covt, 1), nvols);
+end
 
 n_out_imgs = size(covt,2) + 1;
 
@@ -582,6 +588,12 @@ for i = 1:length(vo)
     end % do ols
     
 end % contrasts (vo)
+
+try
+    publish_robust_regression_report
+catch
+    disp
+end
 
 cd(basedir)
 
