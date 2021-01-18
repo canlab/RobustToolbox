@@ -14,7 +14,7 @@ fprintf('Creating HTML report for results in:\n%s\n', resultsdir);
 % ------------------------------------------------------------------------
 
 is_robust_dir = exist(fullfile(resultsdir, 'SETUP.mat'));
-is_run = exist(fullfile(resultsdir, 'rob_tmap_0001.nii'));
+is_run = exist(fullfile(resultsdir, 'rob_tmap_0001.nii')) | exist(fullfile(resultsdir, 'rob_tmap_0001.img'));
 
 if ~is_robust_dir
     fprintf('%s\nis not a CANlab robust results directory because SETUP.mat is missing.\nSkipping report.\n', resultsdir);

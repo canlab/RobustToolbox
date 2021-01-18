@@ -1,5 +1,5 @@
 function [trob, names, mask_obj, nsubjects, weights, SETUP] = robust_reg_load_files_to_objects(robust_reg_directory)
-
+%
 % Load files from a CANLab robust regression directory into objects
 % Objects contain information needed for results display and tables.
 %
@@ -9,6 +9,9 @@ function [trob, names, mask_obj, nsubjects, weights, SETUP] = robust_reg_load_fi
 % nsubjects image summarizing number of subjects with valid data in each voxel
 % weights   fmri_data object with weight maps for each subject (i.e., input image)
 % SETUP     struct saved in directory, including design matrix SETUP.X
+
+% Programmers' notes:
+% Tor Wager: Modified Nov 2020 to load old .img or standard .nii
 
 if ~exist(fullfile(robust_reg_directory, 'SETUP.mat'), 'file')
     error('robust_reg_directory must be a CANLab robust regression directory with SETUP.mat');
@@ -26,10 +29,13 @@ disp(' ');
 load SETUP
 disp(char({SETUP.dir SETUP.name}));
 
+% mask_obj = fmri_data(fullfile(robust_reg_directory, 'mask.nii'), 'noverbose');
+% nsubjects = fmri_data(fullfile(robust_reg_directory, 'nsubjects.nii'), 'noverbose');
+% weights = fmri_data(fullfile(robust_reg_directory, 'weights.nii'), 'noverbose');
 
-mask_obj = fmri_data(fullfile(robust_reg_directory, 'mask.nii'), 'noverbose');
-nsubjects = fmri_data(fullfile(robust_reg_directory, 'nsubjects.nii'), 'noverbose');
-weights = fmri_data(fullfile(robust_reg_directory, 'weights.nii'), 'noverbose');
+mask_obj = load_robreg_file_into_object(robust_reg_directory, 'mask');
+nsubjects = load_robreg_file_into_object(robust_reg_directory, 'nsubjects');
+weights = load_robreg_file_into_object(robust_reg_directory, 'weights');
 
 [n, k] = size(SETUP.X);
 
@@ -37,12 +43,29 @@ names = {'Group average (Intercept)'};
 for i = 2:k, names = [names sprintf('Regressor %d', i - 1)]; end
 
 % Load all t images as statistic_image objects
-d = dir('rob_tmap*');
+d = dir('rob_tmap*nii');
+
+if isempty(d)
+    d = dir('rob_tmap*img');
+end
+
+if isempty(d)
+    error('Error finding tmap names')
+end
 
 trob = statistic_image('image_names', char(d.name), 'type', 't', 'dfe', n - k);
 
 % Replace P-values with those from robust reg, as dfe varies
-d = dir('rob_p_*');
+d = dir('rob_p_*nii');
+
+if isempty(d)
+    d = dir('rob_p_*img');
+end
+
+if isempty(d)
+    error('Error finding tmap names')
+end
+
 prob = statistic_image('image_names', char(d.name));
 
 trob = replace_empty(trob);
@@ -83,3 +106,18 @@ printstr(' ');
 
 
 end
+
+
+function obj = load_robreg_file_into_object(robust_reg_directory, basename)
+% provide facility for checking .nii or .img
+
+myfile = fullfile(robust_reg_directory, [basename '.nii']);
+if ~exist(myfile, 'file')
+    myfile = fullfile(robust_reg_directory, [basename '.img']);
+end
+if ~exist(myfile, 'file')
+    error(['cannot find file: ' myfile])
+end
+obj = fmri_data(myfile, 'noverbose');
+end
+
