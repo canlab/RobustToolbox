@@ -227,7 +227,7 @@ V = spm_vol(P);
 v = spm_read_vols(V);
 nvols = size(v, 4);
 
-if nvols ~= size(covt, 1)
+if nvols ~= size(covt, 1) && ~isempty(covt)
     error('robfit: %d obs in design matrix X, but %d image volumes. These must match.', size(covt, 1), nvols);
 end
 
