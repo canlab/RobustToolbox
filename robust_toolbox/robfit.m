@@ -33,7 +33,37 @@
 % [Which cons] optional vector of which arrays in EXPT.SNPM.P to use
 % e.g., [1 2 4] runs the first, second, and 4th sets of image names
 %
-% Example:
+% Examine the output files
+% 
+% ls -lt
+% published_output             A folder with HTML reports from publish_robust_regression_report
+% irls-ols_p_0002.nii           P-value image for the covariate, difference between robust and OLS 
+% irls-ols_z_0002.nii           Z-value image for the covariate, difference between robust and OLS 
+% ols_p_0002.nii                 P-value image for the covariate, OLS regression
+% ols_tmap_0002.nii           t-value image for the covariate, OLS regression
+% ols_beta_0002.nii            beta (slope) image for the covariate, OLS regression
+% rob_p_0002.nii                P-value image for the covariate, robust regression
+% rob_tmap_0002.nii         t-value image for the covariate, robust regression
+% rob_beta_0002.nii          beta (slope) image for the covariate, robust regression
+% irls-ols_p_0001.nii          P-value image for the intercept, difference between robust and OLS 
+% irls-ols_z_0001.nii          The images below are the same as those above, but for the intercept
+% ols_p_0001.nii
+% ols_tmap_0001.nii
+% ols_beta_0001.nii
+% rob_p_0001.nii
+% rob_tmap_0001.nii
+% rob_beta_0001.nii
+% weights.nii                    Robust regression weights for each image (i.e., participant)
+% mask.nii                        mask of voxels included in the analysis
+% nsubjects.nii                Image with integer values for number of subjects with valid data
+% SETUP.mat                 Metadata file
+% If you are using CANlab object-oriented tools to threshold and view the results maps, you can load and combine the t- and P-maps into t-statistic image objects for each regressor.
+% [trob, names, mask_obj, nsubjects, weights, SETUP] = robust_reg_load_files_to_objects(pwd);
+
+% Examples:
+% See canlab.github.io and the robust regression Github page for a complete
+% walkthrough
+%
 % %load('subjs');
 % %cd into results directory first!
 % EXPT.cov = [];
@@ -57,7 +87,7 @@
 %
 % To do OLS, cons 1-4, and use gray matter mask:
 % EXPT = robfit(EXPT, 1:4, 1, EXPT.mask);
-%
+
 % Programmer's notes:
 %
 % On 5/19/2014, covariates are automatically scaled unless composed solely
@@ -65,7 +95,9 @@
 % of 0s, 1s, and -1s, then NO covariate was centered.  Now, this decision
 % is made for each covariate separately.
 %
-% 1/22/2020 changed N to handle 4-D image entry.
+% 1/22/2020 changed nvols to handle 4-D image entry.
+% 9/9/2022  fixed small but re-introduced in error checking and refactored
+% some variables. Added help and walkthrough (Tor).
 
 function EXPT = robfit(EXPT,varargin)
 
@@ -128,10 +160,12 @@ if ~isfield(EXPT, 'SNPM')
     disp('robfit: Enter EXPT.SNPM substructure with file names, contrast names, contrast numbers!');
     disp('Skipping analysis.')
     return
+
 elseif ~isfield(EXPT.SNPM, 'P')
     disp('robfit: Enter EXPT.SNPM.P cell array with file names, one cell per robust analysis');
     disp('Skipping analysis.')
     return
+
 elseif ~isfield(EXPT.SNPM, 'connames')
     disp('robfit: Enter EXPT.SNPM.connames string matrix with analysis/contrast name for each image set');
     disp('Creating dummy names and proceeding')
@@ -140,6 +174,7 @@ elseif ~isfield(EXPT.SNPM, 'connames')
         tmp{i} = sprintf('analysis%3.0f', i);
     end
     EXPT.SNPM.connames = char(tmp{:});
+
 elseif size(EXPT.SNPM.connames, 1) ~= length(EXPT.SNPM.P)
     if size(EXPT.SNPM.connames, 2) == length(EXPT.SNPM.P)
         EXPT.SNPM.connames = EXPT.SNPM.connames'; %trivial: sometimes need to invert to get in expected format
@@ -147,6 +182,7 @@ elseif size(EXPT.SNPM.connames, 1) ~= length(EXPT.SNPM.P)
         disp('robfit: Contrast names and image file list are different lengths!! Check this!!');
         error('Fix names/image lists and re-run.');
     end
+
 elseif ~isfield(EXPT.SNPM, 'connums')
     disp('robfit: Enter EXPT.SNPM.connums vector with analysis number for each robust analysis');
     disp('Creating default vector and proceeding. Fix to avoid this warning.')
@@ -227,11 +263,30 @@ V = spm_vol(P);
 v = spm_read_vols(V);
 nvols = size(v, 4);
 
-if nvols ~= size(covt, 1)
+
+% --------------------------------------------
+% set up design matrix
+% --------------------------------------------
+if isempty(covt)
+
+    X = ones(nvols, 1);  % for robust reg
+
+else
+
+    X = [ones(size(covt,1), 1) covt]; % for robust reg, run with no intercept!
+
+    % Ensure we have exactly one intercept
+    wh = intercept(X, 'which');
+
+    if length(wh) > 1, error('Enter covariates without an intercept column. Intercept will be added as the first column of the design matrix.'), end
+end
+
+k = size(X, 2); % always size(covt,2) + 1;
+
+if nvols ~= size(X, 1)
     error('robfit: %d obs in design matrix X, but %d image volumes. These must match.', size(covt, 1), nvols);
 end
 
-n_out_imgs = size(covt,2) + 1;
 
 % --------------------------------------------
 % find the in-analysis voxels
@@ -239,6 +294,7 @@ n_out_imgs = size(covt,2) + 1;
 
 % mask, if specified
 if domask
+
     % sample mask data in space of input images
     vm = scn_map_image(domask, P(1,:));
     
@@ -251,16 +307,11 @@ if domask
     
 end
 
-%N = size(P, 1);  % This will not work for a 4-D image.
-N = nvols;
-
 % minimum allowed observations.  robust requires 3 df
-if isempty(covt), k = 1;  %only estimate intercept
-else k = size(covt,2); end
-Ncrit = N-k-3;
+Ncrit = nvols - k - 3;
 fprintf('Minimum allowed observations per voxel:%d\n', Ncrit);
 
-wh = N - sum(isnan(v) | v == 0, 4); %how many observations at this voxel
+wh = nvols - sum(isnan(v) | v == 0, 4); %how many observations at this voxel
 wh = wh >= Ncrit; % voxels to keep
 
 [x,y,z] = ind2sub(size(wh),find(wh));
@@ -277,11 +328,11 @@ whplanes = unique(z);
 
 [nsubjects, maskvol] = deal(zeros(size(wh)) .* NaN);     % save numbers of missing values
 
-weights = zeros([size(wh) N]) .* NaN; % robust reg weights
+weights = zeros([size(wh) nvols]) .* NaN; % robust reg weights
 
-[vo, vot, vop, vo2, vot2, vop2, voz3, vop3] = deal(cell(1, n_out_imgs));
+[vo, vot, vop, vo2, vot2, vop2, voz3, vop3] = deal(cell(1, k));
 
-for j = 1 : n_out_imgs
+for j = 1 : k
     
     %IRLS
     vo{j} = zeros(size(wh)) .* NaN;     % save betas
@@ -301,17 +352,6 @@ end
 fprintf(1,'\nImage name for first image:\n %s\nNumber of images: %3.0f\n\n%6.0f voxels, %3.0f planes in analysis\n\t',P(1,:),size(P,1),sum(wh(:)),length(whplanes))
 fprintf(1,'Done: 000%%');
 savewh = sum(wh(:));
-
-% --------------------------------------------
-% set up design
-% --------------------------------------------
-if isempty(covt)
-    X = ones(nvols,1);  % for robust reg
-else
-    X = [ones(size(covt,1),1) covt]; % for robust reg, run with no intercept!
-end
-
-k = size(X, 2);
 
 % --------------------------------------------
 % perform regression
@@ -349,7 +389,7 @@ for i = 1:length(x)
         
         if isok
             % OK to run
-            [bb,stats]=robustfit(Xvox, tvox, 'bisquare', [], 'off');
+            [bb,stats] = robustfit(Xvox, tvox, 'bisquare', [], 'off');
             
             w = naninsert(wasnan, stats.w);
             
@@ -358,7 +398,7 @@ for i = 1:length(x)
             disp('THIS CODE SHOULD NEVER RUN B/C EXCLUDING BAD VOXELS ABOVE');
             bb = NaN .* ones(k, 1);
             stats = struct('t', bb, 'p', ones(k, 1));
-            w = NaN .* ones(N, 1);
+            w = NaN .* ones(nvols, 1);
             
         end
     end % if robustfit
@@ -384,7 +424,7 @@ for i = 1:length(x)
     if dools
         if sum(~wasnan) > 4
             % OK to run
-            [bb2,dev,stats2]=glmfit(Xvox,tvox,[],[],'off',[],[],'off');
+            [bb2, dev, stats2]=glmfit(Xvox,tvox,[],[],'off',[],[],'off');
             
             % * calculate Z-test for comparison
             % ----------------------------------------------------
@@ -501,7 +541,7 @@ try
     V2 = V; % copy to avoid problems later with 4-D files where they should be 3-D
     V2.fname = fullfile(cwd,['weights' e]);
     disp(['Writing 4-D weight file: ' V2.fname])
-    for i = 1:N
+    for i = 1:nvols
         V2.n(1) = i; % volume number
         V2.descrip = 'Robust regression weights for each subject';
         
