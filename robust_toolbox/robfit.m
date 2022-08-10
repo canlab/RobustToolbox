@@ -9,11 +9,11 @@
 % p-value images are 2-tailed!
 %
 % All predictors should be in a matrix of column vectors, stored in EXPT.cov.
-% 
+%
 % All covariates are scaled to mean=0 and sd=1, UNLESS they are composed of 0's, 1's, and -1's,
 % in which case they are assumed to be contrast codes and are not scaled.
 % the 'nocenter' flag prevents automatic scaling.  This behavior was
-% slightly modified on 5/29/2014 -- see programmer's notes below. 
+% slightly modified on 5/29/2014 -- see programmer's notes below.
 %
 % Intercept is added as 1st predictor
 %
@@ -21,10 +21,10 @@
 %
 % EXPT.SNPM.P           Cell vector. Each cell specifies images for one analysis. Each cell contains a string matrix with image names for the analysis. Image files can be 3-D or 4-D images.
 % EXPT.SNPM.connames    Cell vector. Each cell contains a string with the analysis name (e.g., contrast name) for this contrast
-% EXPT.SNPM.connums     Vector of contrast numbers. Determines folder names (e.g., 1 = robust0001 
+% EXPT.SNPM.connums     Vector of contrast numbers. Determines folder names (e.g., 1 = robust0001
 % EXPT.cov              [n x k] matrix of n observations (must match number of images) empty for 1-sample ttest, or containing covariates
 % EXPT.mask             Optional mask file image name, for voxels to include
-%     
+%
 % [mask] is the name of the mask file to use
 % [nocenter] is a flag to be used if you don't want to center some
 % variables (e.g., you have three different groups, two sets of contrasts)
@@ -34,18 +34,18 @@
 % e.g., [1 2 4] runs the first, second, and 4th sets of image names
 %
 % Examine the output files
-% 
+%
 % ls -lt
 % published_output             A folder with HTML reports from publish_robust_regression_report
-% irls-ols_p_0002.nii           P-value image for the covariate, difference between robust and OLS 
-% irls-ols_z_0002.nii           Z-value image for the covariate, difference between robust and OLS 
+% irls-ols_p_0002.nii           P-value image for the covariate, difference between robust and OLS
+% irls-ols_z_0002.nii           Z-value image for the covariate, difference between robust and OLS
 % ols_p_0002.nii                 P-value image for the covariate, OLS regression
 % ols_tmap_0002.nii           t-value image for the covariate, OLS regression
 % ols_beta_0002.nii            beta (slope) image for the covariate, OLS regression
 % rob_p_0002.nii                P-value image for the covariate, robust regression
 % rob_tmap_0002.nii         t-value image for the covariate, robust regression
 % rob_beta_0002.nii          beta (slope) image for the covariate, robust regression
-% irls-ols_p_0001.nii          P-value image for the intercept, difference between robust and OLS 
+% irls-ols_p_0001.nii          P-value image for the intercept, difference between robust and OLS
 % irls-ols_z_0001.nii          The images below are the same as those above, but for the intercept
 % ols_p_0001.nii
 % ols_tmap_0001.nii
@@ -112,11 +112,11 @@ covt = EXPT.cov;
 if length(varargin)>3, nocenter = varargin{4}; else nocenter = 0; end
 
 if ~isempty(covt)
-    
+
     fprintf(1,'Robfit.m\n%s\nPreparing covariates:\n',linestr);
-    
+
     if length(covt) > size(covt,1), covt = covt'; fprintf(1,'Transposed covariate matrix.\n'); end
-    
+
     if nocenter == 0
         for i = 1:size(covt,2)
             if all( covt(:,i) == 1 | covt(:,i) == -1 | covt(:,i) == 0)
@@ -126,14 +126,14 @@ if ~isempty(covt)
                 fprintf(1,'Cov %3.0f: Centering and scaling to unit variance. Will be saved in rob_tmap_%04d\n',i,i+1);
                 covt(:,i) = scale(covt(:,i));
             end
-            
+
         end
     else
         for i = 1:size(covt,2)
             fprintf(1,'Cov %3.0f: Requested no centering. This will change the interpretation of the intercept!\nWill be saved in rob_tmap_%04d\n',i,i+1);
         end
     end
-    
+
 else
     fprintf(1,'Robfit.m\n%s\nIntercept only (no covariates)\n',linestr);
 end
@@ -200,29 +200,29 @@ for i = wh
     % * run robust regression
     % ----------------------------------------------------
     warning off
-    
+
     disp(''); disp(['Robfit.m - working on ' EXPT.SNPM.connames(i,:)])
-    
+
     if dools, disp('Running OLS and IRLS comparison (slower) - to turn this off, use 0 as 3rd input argument.'),end
     disp(linestr)
-    
+
     if domask
         fprintf(1,'Using mask image: \n%s\n', domask);
     else
         fprintf(1,'No mask found. Analyzing all voxels.\n');
     end
-    
+
     if dools
         [EXPT.SNPM.rob_betas{i},EXPT.SNPM.ols_betas{i}] = rob_fit(EXPT.SNPM.P{i}, covt, EXPT.SNPM.connums(i), dools, domask, EXPT.SNPM.connames(i,:), basedir);
     else
         [EXPT.SNPM.rob_betas{i}] = rob_fit(EXPT.SNPM.P{i}, covt, EXPT.SNPM.connums(i), dools, domask, EXPT.SNPM.connames(i,:), basedir);
     end
     warning on
-    
+
     % * compare
     % ----------------------------------------------------
-    
-    
+
+
 end
 
 
@@ -297,14 +297,14 @@ if domask
 
     % sample mask data in space of input images
     vm = scn_map_image(domask, P(1,:));
-    
+
     % make sure mask is 1's or 0's
     vm = double(vm > 0);
-    
+
     for i = 1:nvols
         v(:, :, :, i) = v(:, :, :, i) .* vm;
     end
-    
+
 end
 
 % minimum allowed observations.  robust requires 3 df
@@ -333,21 +333,21 @@ weights = zeros([size(wh) nvols]) .* NaN; % robust reg weights
 [vo, vot, vop, vo2, vot2, vop2, voz3, vop3] = deal(cell(1, k));
 
 for j = 1 : k
-    
+
     %IRLS
     vo{j} = zeros(size(wh)) .* NaN;     % save betas
     vot{j} = zeros(size(wh)) .* NaN;    % save t values
     vop{j} = zeros(size(wh)) .* NaN;    % save p values
-    
+
     % OLS
     vo2{j} = zeros(size(wh)) .* NaN;     % save betas
     vot2{j} = zeros(size(wh)) .* NaN;    % save t values
     vop2{j} = zeros(size(wh)) .* NaN;    % save p values
-    
+
     % comparison between IRLS and OLS
     voz3{j} = zeros(size(wh)) .* NaN;    % save Z scores for difference
     vop3{j} = zeros(size(wh)) .* NaN;    % save p values
-    
+
 end
 fprintf(1,'\nImage name for first image:\n %s\nNumber of images: %3.0f\n\n%6.0f voxels, %3.0f planes in analysis\n\t',P(1,:),size(P,1),sum(wh(:)),length(whplanes))
 fprintf(1,'Done: 000%%');
@@ -358,112 +358,112 @@ savewh = sum(wh(:));
 % --------------------------------------------
 
 for i = 1:length(x)
-    
+
     t = squeeze(v(x(i),y(i),z(i),:));
-    
+
     %   b = pinv(covt) * t;         % regular linear model fit
-    
+
     % alternative way: uses Rousseeuw's algorithm - much slower
     % The problem is that this is biased towards finding results!  Improper
     % control of false positive rate.
     %Rousseeuw, P.J. (1984), "Least Median of Squares Regression,"
     %Journal of the American Statistical Association, Vol. 79, pp. 871-881.
-    
+
     %[res]=fastmcd_noplot([covt t]);
     % remove n most extreme outliers and recompute correlation
     %wh = res.flag==0; tnew = t; xnew = covt;
     %tnew(wh) = []; xnew(wh,:) = [];
     %[bb,dev,stats] = glmfit(xnew,tnew);
-    
+
     % * fit models for IRLS and OLS
     % ----------------------------------------------------
-    
+
     % robustfit, IRLS,
     doirls = 1; %dools = 1;
     if doirls
-        
+
         % Remove NaNs and run only if we have enough observations
         [wasnan, Xvox, tvox] = nanremove(X, t);
-        
+
         isok = sum(~wasnan) > 4; % THIS CHECK LIKELY UNNECESSARY B/C EXCLUDING BAD VOXELS ABOVE - YONI
-        
+
         if isok
             % OK to run
             [bb,stats] = robustfit(Xvox, tvox, 'bisquare', [], 'off');
-            
+
             w = naninsert(wasnan, stats.w);
-            
+
         else
             % empty voxel: not enough data
             disp('THIS CODE SHOULD NEVER RUN B/C EXCLUDING BAD VOXELS ABOVE');
             bb = NaN .* ones(k, 1);
             stats = struct('t', bb, 'p', ones(k, 1));
             w = NaN .* ones(nvols, 1);
-            
+
         end
     end % if robustfit
-    
+
     for j = 1:k
         vo{j}(x(i),y(i),z(i)) = bb(j);
         vot{j}(x(i),y(i),z(i)) = stats.t(j);
         vop{j}(x(i),y(i),z(i)) = stats.p(j);
-        
+
         nsubjects(x(i),y(i),z(i)) = sum(~wasnan);
         maskvol(x(i),y(i),z(i)) = isok;
-        
+
         weights(x(i),y(i),z(i), :) = w;
     end
-    
+
     % save F-stats
     % Tor removed Aug 2012 - not very useful overall, so save the time.
     %         [Fobs, p, dfb, dfe] = F_test_no_intercept(X,t,stats.s);
     %         fmap(x(i),y(i),z(i)) = Fobs;
     %         fpmap(x(i),y(i),z(i)) = p;
-    
-    
+
+
     if dools
         if sum(~wasnan) > 4
             % OK to run
             [bb2, dev, stats2]=glmfit(Xvox,tvox,[],[],'off',[],[],'off');
-            
+
             % * calculate Z-test for comparison
             % ----------------------------------------------------
             if i == 1, df = stats2.dfe;  [mn,vv] = tstat(df); end
-            
+
             zdiff = stats.t ./ sqrt(vv) - stats2.t ./ sqrt(vv); % z-scores by dividing by t-distribution variance
             zdiff = zdiff ./ sqrt(2);                           % diff between z-scores is distributed with var=sum of var(z1) + var(z2)
             % ...thus,sigma
             % (z1 - z2) = sqrt(2)
             % e.g., - http://www.mathpages.com/home/kmath046.htm
             pdiff = 2 * (1 - normcdf(abs(zdiff)));              % 2-tailed
-            
-            
+
+
         else
             % empty voxel: not enough data
             bb2 = NaN .* ones(k, 1);
             stats2 = struct('t', bb2, 'p', ones(k, 1), 'dfe', NaN);
             zdiff = NaN;
             pdiff = 1;
-            
+
         end
-        
+
         % save in matrix for output
         for j = 1:length(bb)
             vo2{j}(x(i),y(i),z(i)) = bb2(j);
             vot2{j}(x(i),y(i),z(i)) = stats2.t(j);
             vop2{j}(x(i),y(i),z(i)) = stats2.p(j);
-            
+
             voz3{j}(x(i),y(i),z(i)) = zdiff(j);
             vop3{j}(x(i),y(i),z(i)) = pdiff(j);
         end
-        
+
     end
-    
+
     % display progress
     if rem(i,100) == 0
         fprintf(1,'\b\b\b\b%03d%%',round(100*i / length(x)));
     end
-    
+
 end
 fprintf(1,' done. ')
 fprintf(1,'\twriting volumes.\n')
@@ -537,14 +537,14 @@ spm_write_vol(V, maskvol);
 maskvol(isnan(maskvol)) = 0;
 
 try
-    
+
     V2 = V; % copy to avoid problems later with 4-D files where they should be 3-D
     V2.fname = fullfile(cwd,['weights' e]);
     disp(['Writing 4-D weight file: ' V2.fname])
     for i = 1:nvols
         V2.n(1) = i; % volume number
         V2.descrip = 'Robust regression weights for each subject';
-        
+
         myw = squeeze(weights(:, :, :, i));
         myw(~maskvol) = NaN;
         spm_write_vol(V2, myw);
@@ -559,74 +559,74 @@ for i = 1:length(vo)
 
     % * write output images for IRLS
     % ----------------------------------------------------
-    
+
     if i < 10, myz = '000';  else myz = '00';  end
     V.fname = fullfile(cwd,['rob_beta_' myz num2str(i) e]);
     V.descrip = 'IRLS robust regression betas, beta_0001 is intercept';
-    
+
     if i == 1, newP = V.fname;
     else
         newP = str2mat(newP,V.fname);
     end
-    
+
     disp(['Writing ' V.fname])
     spm_write_vol(V,vo{i});
-    
+
     V.fname = fullfile(cwd,['rob_tmap_' myz num2str(i) e]);
     V.descrip = 'IRLS robust regression t-scores, tmap_0001 is intercept';
     disp(['Writing ' V.fname])
     spm_write_vol(V,vot{i});
-    
+
     V.fname = fullfile(cwd,['rob_p_' myz num2str(i) e]);
     V.descrip = 'IRLS robust regression p values, rob_p_0001 is intercept';
     disp(['Writing ' V.fname])
     spm_write_vol(V,vop{i});
-    
+
     % * write output images for OLS
     % ----------------------------------------------------
-    
+
     if dools
         V.descrip = 'OLS regression betas from robfit.m, beta_0001 is intercept';
         V.fname = fullfile(cwd,['ols_beta_' myz num2str(i) e]);
-        
+
         if i == 1, newP2 = V.fname;
         else
             newP2 = str2mat(newP,V.fname);
         end
-        
+
         disp(['Writing ' V.fname])
         spm_write_vol(V,vo2{i});
-        
+
         V.fname = fullfile(cwd,['ols_tmap_' myz num2str(i) e]);
         V.descrip = 'OLS regression t-scores from robfit.m, tmap_0001 is intercept';
         disp(['Writing ' V.fname])
         spm_write_vol(V,vot2{i});
-        
+
         V.fname = fullfile(cwd,['ols_p_' myz num2str(i) e]);
         V.descrip = 'OLS regression p values from robfit.m, rob_p_0001 is intercept';
         disp(['Writing ' V.fname])
         spm_write_vol(V,vop2{i});
-        
+
         % * write output images for comparison
         % ----------------------------------------------------
         V.descrip = 'IRLS-OLS difference z-scores from robfit.m, beta_0001 is intercept';
         V.fname = fullfile(cwd,['irls-ols_z_' myz num2str(i) e]);
-        
+
         if i == 1, newP2 = V.fname;
         else
             newP2 = str2mat(newP,V.fname);
         end
-        
+
         disp(['Writing ' V.fname])
         spm_write_vol(V,voz3{i});
-        
+
         V.fname = fullfile(cwd,['irls-ols_p_' myz num2str(i) e]);
         V.descrip = 'IRLS-OLS 2-tailed p-values from robfit.m, tmap_0001 is intercept';
         disp(['Writing ' V.fname])
         spm_write_vol(V,vop3{i});
-        
+
     end % do ols
-    
+
 end % contrasts (vo)
 
 try
