@@ -97,7 +97,8 @@ robust_nonpar_cluster_tables(R,doextended,wh_regressor,A.cl_all,A.cl_sig,A.cl_po
 
 domont = input('Make montage? ');
 if domont
-    montage_clusters(overlay,A.cl_all,cl_extent_pos,cl_extent_neg,A.cl_pos,A.cl_neg,{'g' 'r' 'c' 'y' 'b'},'nooverlap');
+    canlab_montage_clusters({A.cl_all, cl_extent_pos, cl_extent_neg, A.cl_pos, A.cl_neg}, ...
+        'colors', {'g' 'r' 'c' 'y' 'b'}, 'overlay', overlay);
 end
 
 

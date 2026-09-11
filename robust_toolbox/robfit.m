@@ -495,10 +495,9 @@ V = V(1); [d,f,e] = fileparts(V.fname);
 switch(spm('Ver'))
     case 'SPM2'
         V.dim(4) = spm_type('float');
-    case {'SPM5' 'SPM8' 'SPM12'}
-        V.dt(1) = spm_type('float32');
     otherwise
-        error('Unknown SPM version "%s": neuroscientists of the future, fix me!', spm('Ver'));
+        % SPM5 and later (SPM8, SPM12, SPM25, ...) all use the .dt field
+        V.dt(1) = spm_type('float32');
 end
 
 %cwd = pwd;

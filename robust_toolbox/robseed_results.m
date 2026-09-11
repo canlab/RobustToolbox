@@ -9,7 +9,7 @@ function [allcl] = robseed_results(pthresh,kthresh,df,varargin)
 %
 % to plot correlated cluster 2 against seed 1:
 % load ../seed_clusters.mat
-% tor_fig(1,2);montage_clusters_maxslice([],clcorr(2),{'r'});
+% tor_fig(1,2);montage_clusters_maxslice([],clcorr(2),{'r'});   % or: canlab_montage_clusters(clcorr(2), 'colors', {'r'})
 % subplot(1,2,2); plot_correlation_samefig(EXPT.seeds(:,1),cl(2).timeseries,[],'ko',0,1);
 % xlabel('L Amygdala seed region (Look - Reapp Neg)')
 %
@@ -57,16 +57,20 @@ for i = whseeds
     
     figname = ['Contrast ' dirnm ', Seed ' num2str(i) '.'];
     
-    if exist(names{i}) == 2
+    if exist(names{i}, 'file') == 2
         disp(names{i}); disp('_________________________________');
-        p2 = threshold_imgs(names{i},tinv(1-pthresh,df),kthresh,'both'); 
-        cl = mask2clusters(p2);
-        montage_clusters(ovl,cl,{'r'},[.5 .5]);
-        set(gcf,'Name',figname)
         
-
-        montage_clusters_medial(ovl,cl,{'r'},[.5 .5]);
-        set(gcf,'Name',figname)
+        % Threshold the robust t-map: |t| > tinv(1 - pthresh, df), extent >= kthresh
+        % (same rule as the legacy threshold_imgs(..., 'both') call)
+        tcrit = tinv(1 - pthresh, df);
+        t = statistic_image('image_names', names{i}, 'type', 'T', 'dfe', df);
+        t = threshold(t, [-tcrit tcrit], 'raw-outside', 'k', kthresh);
+        r = region(t);
+        cl = region2struct(r);   % legacy clusters structure for tor_extract_rois and downstream code
+        
+        % Axial + midline sagittal montage (replaces montage_clusters and
+        % montage_clusters_medial)
+        canlab_montage_clusters(cl, 'colors', {'r'}, 'overlay', ovl, 'montagetype', 'compact', 'figname', figname, 'noverbose');
         disp(' ');
         
         
